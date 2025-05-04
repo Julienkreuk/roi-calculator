@@ -1,0 +1,187 @@
+import React, { useState } from 'react';
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+export default function ROICalculator() {
+  const [inputs, setInputs] = useState({
+    visitors: '10000',
+    signupConv: '7',
+    paidConv: '20',
+    clv: '4000',
+    churn: '15',
+    investment: '25000'
+  });
+  const [result, setResult] = useState(null);
+
+  const handleInputChange = (field) => (e) => {
+    setInputs({ ...inputs, [field]: e.target.value });
+  };
+
+  const parseNumber = (value) => parseFloat(value.replace(/,/g, '.')) || 0;
+
+  const calculateROI = () => {
+    const impact = 37.5 / 100;
+    const visitorsNum = parseNumber(inputs.visitors);
+    const signupConvNum = parseNumber(inputs.signupConv);
+    const paidConvNum = parseNumber(inputs.paidConv);
+    const clvNum = parseNumber(inputs.clv);
+    const churnNum = parseNumber(inputs.churn);
+    const investmentNum = parseNumber(inputs.investment);
+
+    const signUps = visitorsNum * (signupConvNum / 100);
+    const paidCustomers = signUps * (paidConvNum / 100);
+    const yearlyCustomers = paidCustomers * 12 * (1 - churnNum / 100);
+    const yearlyRevenue = yearlyCustomers * clvNum * 12;
+
+    const newSignupConv = signupConvNum * (1 + impact);
+    const newPaidConv = paidConvNum * (1 + impact);
+    const newChurn = churnNum * (1 - impact);
+
+    const newSignUps = visitorsNum * (newSignupConv / 100);
+    const newPaidCustomers = newSignUps * (newPaidConv / 100);
+    const newYearlyCustomers = newPaidCustomers * 12 * (1 - newChurn / 100);
+    const newYearlyRevenue = newYearlyCustomers * clvNum * 12;
+
+    const extraRevenue = newYearlyRevenue - yearlyRevenue;
+    const roi = ((extraRevenue - investmentNum) / investmentNum) * 100;
+    const factor = (extraRevenue / investmentNum + 1).toFixed(2);
+
+    setResult({
+      yearlyCustomers: Math.round(yearlyCustomers),
+      yearlyRevenue: Math.round(yearlyRevenue),
+      newYearlyCustomers: Math.round(newYearlyCustomers),
+      newYearlyRevenue: Math.round(newYearlyRevenue),
+      extraRevenue: Math.round(extraRevenue),
+      roi: Math.round(roi),
+      factor
+    });
+  };
+
+  const chartDataRevenue = result ? [
+    { name: 'Jaaromzet', Huidig: result.yearlyRevenue, Nieuw: result.newYearlyRevenue }
+  ] : [];
+
+  const chartDataCustomers = result ? [
+    { name: 'Jaarlijkse Klanten', Huidig: result.yearlyCustomers, Nieuw: result.newYearlyCustomers }
+  ] : [];
+
+  const InputWithPrefix = ({ prefix, value, onChange }) => (
+    <div className="relative">
+      <span className="absolute inset-y-0 left-2 flex items-center text-gray-500">{prefix}</span>
+      <Input type="number" value={value} onChange={onChange} className="pl-8" />
+    </div>
+  );
+
+  return (
+    <div className="max-w-6xl mx-auto p-4 space-y-8">
+      <div className="grid grid-cols-2 gap-8">
+        <Card>
+          <CardContent className="space-y-4">
+            <h2 className="text-xl font-bold mb-4">ROI Calculator voor UX Design</h2>
+            <div className="space-y-4">
+              <div><label className="block mb-1">Aantal bezoekers per maand</label><InputWithPrefix prefix="👥" value={inputs.visitors} onChange={handleInputChange('visitors')} /></div>
+              <div><label className="block mb-1">Huidige conversie naar sign-up (%)</label><InputWithPrefix prefix="%" value={inputs.signupConv} onChange={handleInputChange('signupConv')} /></div>
+              <div><label className="block mb-1">Huidige conversie naar betaald (%)</label><InputWithPrefix prefix="%" value={inputs.paidConv} onChange={handleInputChange('paidConv')} /></div>
+              <div><label className="block mb-1">Gemiddelde opbrengst per klant per maand</label><InputWithPrefix prefix="€" value={inputs.clv} onChange={handleInputChange('clv')} /></div>
+              <div><label className="block mb-1">Huidige churn per jaar (%)</label><InputWithPrefix prefix="%" value={inputs.churn} onChange={handleInputChange('churn')} /></div>
+              <div><label className="block mb-1">Investering in design (€)</label><InputWithPrefix prefix="€" value={inputs.investment} onChange={handleInputChange('investment')} /></div>
+            </div>
+            <Button onClick={calculateROI} className="mt-4 w-full">Bereken ROI</Button>
+          </CardContent>
+        </Card>
+
+        {result && (
+          <div className="space-y-4">
+            <Card>
+              <CardContent className="space-y-4">
+                <h3 className="text-lg font-semibold">Omzetstijging na implementatie</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={chartDataRevenue} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => new Intl.NumberFormat().format(value)} />
+                    <Legend />
+                    <Bar dataKey="Huidig" fill="#8884d8" />
+                    <Bar dataKey="Nieuw" fill="#82ca9d" />
+                  </BarChart>
+                </ResponsiveContainer>
+                <p>👉 Huidige jaaromzet: <strong>€{result.yearlyRevenue.toLocaleString()}</strong></p>
+                <p>👉 Nieuwe jaaromzet: <strong>€{result.newYearlyRevenue.toLocaleString()}</strong></p>
+                <p>✅ Extra jaaromzet: <strong>€{result.extraRevenue.toLocaleString()}</strong></p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="space-y-4">
+                <h3 className="text-lg font-semibold">Stijging in klanten</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={chartDataCustomers} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => new Intl.NumberFormat().format(value)} />
+                    <Legend />
+                    <Bar dataKey="Huidig" fill="#8884d8" />
+                    <Bar dataKey="Nieuw" fill="#82ca9d" />
+                  </BarChart>
+                </ResponsiveContainer>
+                <p>👉 Huidige jaarlijkse klanten: <strong>{result.yearlyCustomers}</strong></p>
+                <p>👉 Nieuwe jaarlijkse klanten: <strong>{result.newYearlyCustomers}</strong></p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center space-y-2">
+                <h3 className="text-2xl font-bold">ROI</h3>
+                <p className="text-4xl font-bold text-green-600">{result.roi}%</p>
+                <p className="text-lg">Factor: <strong>{result.factor}x</strong></p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+
+      <Accordion type="single" collapsible className="mt-8">
+        <AccordionItem value="formules">
+          <AccordionTrigger>Bekijk alle gebruikte formules</AccordionTrigger>
+          <AccordionContent>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li>signUps = bezoekers × (conversie naar sign-up / 100)</li>
+              <li>paidCustomers = signUps × (conversie naar betaald / 100)</li>
+              <li>yearlyCustomers = paidCustomers × 12 × (1 - churn / 100)</li>
+              <li>yearlyRevenue = yearlyCustomers × opbrengst per maand × 12</li>
+              <li>newSignupConv = conversie naar sign-up × (1 + impact)</li>
+              <li>newPaidConv = conversie naar betaald × (1 + impact)</li>
+              <li>newChurn = churn × (1 - impact)</li>
+              <li>newSignUps = bezoekers × (newSignupConv / 100)</li>
+              <li>newPaidCustomers = newSignUps × (newPaidConv / 100)</li>
+              <li>newYearlyCustomers = newPaidCustomers × 12 × (1 - newChurn / 100)</li>
+              <li>newYearlyRevenue = newYearlyCustomers × opbrengst per maand × 12</li>
+              <li>extraRevenue = newYearlyRevenue - yearlyRevenue</li>
+              <li>ROI = (extraRevenue - investering) / investering × 100</li>
+              <li>Factor = (extraRevenue / investering) + 1</li>
+            </ul>
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="bronnen">
+          <AccordionTrigger>Bekijk gebruikte bronnen</AccordionTrigger>
+          <AccordionContent>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li>Nielsen Norman Group (artikel: \"ROI of Usability\")</li>
+              <li>Forrester Research (rapport: \"Total Economic Impact of UX Design\")</li>
+              <li>Baymard Institute (Benchmark: \"UX Research E-commerce Platforms\")</li>
+              <li>McKinsey (artikel: \"The Business Value of Design\")</li>
+              <li>Interne case studies en sector-specifieke benchmarks</li>
+            </ul>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <footer className="text-center text-xs text-gray-500 mt-8">
+        © Daasign 2025 • ROI Calculator • All values are simulated for demonstration purposes
+      </footer>
+    </div>
+  );
+}
