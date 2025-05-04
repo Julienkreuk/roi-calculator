@@ -1,0 +1,129 @@
+import React, { useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+export default function ROICalculator() {
+  const [inputs, setInputs] = useState({
+    visitors: '10000',
+    signupConv: '7',
+    paidConv: '20',
+    clv: '4000',
+    churn: '15',
+    investment: '25000'
+  });
+  const [result, setResult] = useState(null);
+
+  const handleInputChange = (field) => (e) => {
+    setInputs({ ...inputs, [field]: e.target.value });
+  };
+
+  const parseNumber = (value) => parseFloat(value.replace(/,/g, '.')) || 0;
+
+  const calculateROI = () => {
+    const impact = 37.5 / 100;
+    const visitorsNum = parseNumber(inputs.visitors);
+    const signupConvNum = parseNumber(inputs.signupConv);
+    const paidConvNum = parseNumber(inputs.paidConv);
+    const clvNum = parseNumber(inputs.clv);
+    const churnNum = parseNumber(inputs.churn);
+    const investmentNum = parseNumber(inputs.investment);
+
+    const signUps = visitorsNum * (signupConvNum / 100);
+    const paidCustomers = signUps * (paidConvNum / 100);
+    const yearlyCustomers = paidCustomers * 12 * (1 - churnNum / 100);
+    const yearlyRevenue = yearlyCustomers * clvNum * 12;
+
+    const newSignupConv = signupConvNum * (1 + impact);
+    const newPaidConv = paidConvNum * (1 + impact);
+    const newChurn = churnNum * (1 - impact);
+
+    const newSignUps = visitorsNum * (newSignupConv / 100);
+    const newPaidCustomers = newSignUps * (newPaidConv / 100);
+    const newYearlyCustomers = newPaidCustomers * 12 * (1 - newChurn / 100);
+    const newYearlyRevenue = newYearlyCustomers * clvNum * 12;
+
+    const extraRevenue = newYearlyRevenue - yearlyRevenue;
+    const roi = ((extraRevenue - investmentNum) / investmentNum) * 100;
+    const factor = (extraRevenue / investmentNum + 1).toFixed(2);
+
+    setResult({
+      yearlyCustomers: Math.round(yearlyCustomers),
+      yearlyRevenue: Math.round(yearlyRevenue),
+      newYearlyCustomers: Math.round(newYearlyCustomers),
+      newYearlyRevenue: Math.round(newYearlyRevenue),
+      extraRevenue: Math.round(extraRevenue),
+      roi: Math.round(roi),
+      factor
+    });
+  };
+
+  const chartDataRevenue = result ? [
+    { name: 'Jaaromzet', Huidig: result.yearlyRevenue, Nieuw: result.newYearlyRevenue }
+  ] : [];
+
+  const chartDataCustomers = result ? [
+    { name: 'Jaarlijkse Klanten', Huidig: result.yearlyCustomers, Nieuw: result.newYearlyCustomers }
+  ] : [];
+
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem' }}>
+      <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>ROI Calculator voor UX Design</h2>
+      <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 300px' }}>
+          {['visitors', 'signupConv', 'paidConv', 'clv', 'churn', 'investment'].map((field, idx) => (
+            <div key={idx} style={{ marginBottom: '1rem' }}>
+              <label>{
+                field === 'visitors' ? 'Aantal bezoekers per maand' :
+                field === 'signupConv' ? 'Huidige conversie naar sign-up (%)' :
+                field === 'paidConv' ? 'Huidige conversie naar betaald (%)' :
+                field === 'clv' ? 'Gemiddelde opbrengst per klant per maand' :
+                field === 'churn' ? 'Huidige churn per jaar (%)' :
+                'Investering in design (€)'
+              }</label>
+              <input type="number" value={inputs[field]} onChange={handleInputChange(field)} style={{ width: '100%' }} />
+            </div>
+          ))}
+          <button onClick={calculateROI} style={{ width: '100%', padding: '0.75rem', background: '#4F46E5', color: 'white', border: 'none' }}>Bereken ROI</button>
+        </div>
+
+        {result && (
+          <div style={{ flex: '1 1 300px' }}>
+            <h3>Omzetstijging na implementatie</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartDataRevenue}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip formatter={(value) => new Intl.NumberFormat().format(value)} />
+                <Legend />
+                <Bar dataKey="Huidig" fill="#8884d8" />
+                <Bar dataKey="Nieuw" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+            <p>👉 Huidige jaaromzet: <strong>€{result.yearlyRevenue.toLocaleString()}</strong></p>
+            <p>👉 Nieuwe jaaromzet: <strong>€{result.newYearlyRevenue.toLocaleString()}</strong></p>
+            <p>✅ Extra jaaromzet: <strong>€{result.extraRevenue.toLocaleString()}</strong></p>
+
+            <h3 style={{ marginTop: '1rem' }}>Stijging in klanten</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartDataCustomers}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip formatter={(value) => new Intl.NumberFormat().format(value)} />
+                <Legend />
+                <Bar dataKey="Huidig" fill="#8884d8" />
+                <Bar dataKey="Nieuw" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+            <p>👉 Huidige jaarlijkse klanten: <strong>{result.yearlyCustomers}</strong></p>
+            <p>👉 Nieuwe jaarlijkse klanten: <strong>{result.newYearlyCustomers}</strong></p>
+
+            <h3 style={{ marginTop: '1rem' }}>ROI</h3>
+            <p style={{ fontSize: '2rem', fontWeight: 'bold', color: 'green' }}>{result.roi}%</p>
+            <p>Factor: <strong>{result.factor}x</strong></p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
